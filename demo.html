@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hunt Master Bot – Demo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', sans-serif; background: #111; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 30px 10px; }
+
+  .wrapper { width: 100%; max-width: 480px; }
+
+  .title-card {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border: 1px solid #25d366;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+    text-align: center;
+    color: white;
+  }
+  .title-card h1 { font-size: 22px; color: #25d366; margin-bottom: 6px; }
+  .title-card p { font-size: 13px; color: #aaa; }
+  .title-card .badge { display: inline-block; background: #25d366; color: #000; font-size: 11px; font-weight: bold; padding: 3px 10px; border-radius: 20px; margin-top: 10px; }
+
+  .phone {
+    background: #1c1c1c;
+    border-radius: 36px;
+    border: 6px solid #333;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  }
+
+  .status-bar {
+    background: #1f2c34;
+    color: #aaa;
+    font-size: 11px;
+    padding: 6px 16px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .wa-header {
+    background: #1f2c34;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid #2a3942;
+  }
+  .wa-header .avatar {
+    width: 38px; height: 38px;
+    background: linear-gradient(135deg, #25d366, #128c7e);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .wa-header .info { flex: 1; }
+  .wa-header .name { color: #e9edef; font-size: 15px; font-weight: 600; }
+  .wa-header .status { color: #8696a0; font-size: 12px; }
+
+  .chat-area {
+    background: #0b141a;
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23182229' fill-opacity='0.6'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    min-height: 480px;
+    padding: 12px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+    max-height: 560px;
+  }
+
+  .date-badge {
+    text-align: center;
+    color: #8696a0;
+    font-size: 11px;
+    background: #182229;
+    display: inline-block;
+    margin: 4px auto;
+    padding: 3px 10px;
+    border-radius: 8px;
+    align-self: center;
+  }
+
+  .msg { max-width: 78%; display: flex; flex-direction: column; }
+  .msg.user { align-self: flex-end; }
+  .msg.bot  { align-self: flex-start; }
+
+  .bubble {
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    position: relative;
+  }
+  .msg.user .bubble {
+    background: #005c4b;
+    color: #e9edef;
+    border-bottom-right-radius: 2px;
+  }
+  .msg.bot .bubble {
+    background: #1f2c34;
+    color: #e9edef;
+    border-bottom-left-radius: 2px;
+  }
+  .bubble b  { color: #25d366; }
+  .bubble em { color: #8696a0; font-style: italic; }
+
+  .time { font-size: 10px; color: #8696a0; margin-top: 2px; align-self: flex-end; padding-right: 4px; }
+  .msg.bot .time { align-self: flex-start; padding-left: 4px; }
+
+  .photo-bubble {
+    background: #1f2c34;
+    border-radius: 10px;
+    overflow: hidden;
+    border-bottom-left-radius: 2px;
+    max-width: 220px;
+  }
+  .photo-bubble .photo-placeholder {
+    background: linear-gradient(135deg, #2a3942, #1f2c34);
+    height: 130px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: #8696a0;
+    font-size: 28px;
+  }
+  .photo-bubble .photo-caption {
+    padding: 6px 10px;
+    font-size: 12px;
+    color: #8696a0;
+  }
+
+  .score-tag {
+    background: #25d366;
+    color: #000;
+    font-size: 11px;
+    font-weight: bold;
+    padding: 2px 8px;
+    border-radius: 10px;
+    display: inline-block;
+    margin-bottom: 4px;
+  }
+
+  .wa-input {
+    background: #1f2c34;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-top: 1px solid #2a3942;
+  }
+  .wa-input .input-box {
+    flex: 1;
+    background: #2a3942;
+    border-radius: 20px;
+    padding: 8px 14px;
+    color: #8696a0;
+    font-size: 13px;
+  }
+  .wa-input .send-btn {
+    width: 36px; height: 36px;
+    background: #25d366;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+
+  .features {
+    background: #1a1a2e;
+    border: 1px solid #25d36644;
+    border-radius: 12px;
+    padding: 18px;
+    margin-top: 20px;
+    color: white;
+  }
+  .features h3 { color: #25d366; margin-bottom: 12px; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+  .feature-item { display: flex; gap: 10px; margin-bottom: 10px; font-size: 13px; color: #ccc; }
+  .feature-item .icon { font-size: 18px; width: 24px; flex-shrink: 0; }
+
+  .footer { text-align: center; color: #444; font-size: 11px; margin-top: 16px; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <div class="title-card">
+    <h1>🎯 AI Hunt Master</h1>
+    <p>WhatsApp-based Digital Amazing Race Bot</p>
+    <p style="margin-top:6px;color:#ccc;font-size:12px;">Built for Team Builders India</p>
+    <span class="badge">LIVE DEMO PREVIEW</span>
+  </div>
+
+  <div class="phone">
+    <div class="status-bar">
+      <span>9:41 AM</span>
+      <span>▌▌▌ WiFi 🔋</span>
+    </div>
+
+    <div class="wa-header">
+      <div class="avatar">🎯</div>
+      <div class="info">
+        <div class="name">Hunt Master</div>
+        <div class="status">online</div>
+      </div>
+      <div style="color:#8696a0;font-size:18px;">⋮</div>
+    </div>
+
+    <div class="chat-area">
+      <div class="date-badge">Today</div>
+
+      <!-- User says hi -->
+      <div class="msg user">
+        <div class="bubble">Hello</div>
+        <div class="time">9:41 AM ✓✓</div>
+      </div>
+
+      <!-- Bot: identity required -->
+      <div class="msg bot">
+        <div class="bubble">🕵️ <b>IDENTITY REQUIRED</b><br><br>State your team name, Agent.<br>No name, no mission.</div>
+        <div class="time">9:41 AM</div>
+      </div>
+
+      <!-- User gives name -->
+      <div class="msg user">
+        <div class="bubble">Team Alpha</div>
+        <div class="time">9:42 AM ✓✓</div>
+      </div>
+
+      <!-- Bot: welcome + clue 1 -->
+      <div class="msg bot">
+        <div class="bubble">
+          🎯 Identity confirmed. Welcome, <b>Team Alpha</b>!<br><br>
+          The race begins NOW.<br><br>
+          🕵️ <b>MISSION BRIEFING – CHECKPOINT 1</b><br><br>
+          Agent, your first target is a <b>RED vehicle</b>.<br>
+          Find one, photograph it, and send proof.<br>
+          Time is ticking. Go.
+        </div>
+        <div class="time">9:42 AM</div>
+      </div>
+
+      <!-- User asks for hint -->
+      <div class="msg user">
+        <div class="bubble">hint</div>
+        <div class="time">9:45 AM ✓✓</div>
+      </div>
+
+      <!-- Bot: hint -->
+      <div class="msg bot">
+        <div class="bubble">🔎 <b>HINT:</b> <em>Check the nearest parking area or road.</em><br><br>No more hints for this checkpoint.</div>
+        <div class="time">9:45 AM</div>
+      </div>
+
+      <!-- User sends photo -->
+      <div class="msg user" style="align-self:flex-end">
+        <div style="background:#005c4b;border-radius:10px;border-bottom-right-radius:2px;overflow:hidden;max-width:220px;">
+          <div style="background:linear-gradient(135deg,#1a3a2a,#0d2b1e);height:130px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#25d366;font-size:32px;">
+            🚗
+            <span style="font-size:11px;color:#8696a0;">photo_red_car.jpg</span>
+          </div>
+        </div>
+        <div class="time">9:48 AM ✓✓</div>
+      </div>
+
+      <!-- Bot: challenge complete -->
+      <div class="msg bot">
+        <div class="bubble">
+          ✅ <b>CHALLENGE 1 COMPLETE!</b><br>
+          <span class="score-tag">+50 POINTS</span><br>
+          Total: <b>50 pts</b><br><br>
+          🔥 <b>CHECKPOINT 2 UNLOCKED</b><br><br>
+          Well done, Agent.<br>
+          Next: Find a <b>fire extinguisher</b> inside any building.<br>
+          Photograph it and report back.
+        </div>
+        <div class="time">9:48 AM</div>
+      </div>
+
+      <!-- User off-topic -->
+      <div class="msg user">
+        <div class="bubble">Can we get more time?</div>
+        <div class="time">9:50 AM ✓✓</div>
+      </div>
+
+      <!-- Bot: in character -->
+      <div class="msg bot">
+        <div class="bubble">⏱️ Time waits for no Agent.<br>The clock runs. <em>Focus on the mission.</em></div>
+        <div class="time">9:50 AM</div>
+      </div>
+
+      <!-- User sends score -->
+      <div class="msg user">
+        <div class="bubble">score</div>
+        <div class="time">9:51 AM ✓✓</div>
+      </div>
+
+      <!-- Bot: score -->
+      <div class="msg bot">
+        <div class="bubble">📊 <b>Team Alpha</b><br>Score: <b>50 pts</b> | Checkpoints: <b>1/5</b></div>
+        <div class="time">9:51 AM</div>
+      </div>
+
+    </div>
+
+    <div class="wa-input">
+      <div style="font-size:20px;color:#8696a0;">😊</div>
+      <div class="input-box">Type a message</div>
+      <div class="send-btn">➤</div>
+    </div>
+  </div>
+
+  <div class="features">
+    <h3>✦ What the Bot Does</h3>
+    <div class="feature-item"><span class="icon">🎯</span><span>Registers teams by name via WhatsApp</span></div>
+    <div class="feature-item"><span class="icon">🗺️</span><span>Sends clues one by one — next unlocks only after completion</span></div>
+    <div class="feature-item"><span class="icon">📸</span><span>Validates photos using AI (red car, fire extinguisher, team selfie…)</span></div>
+    <div class="feature-item"><span class="icon">🏆</span><span>Awards points automatically and tracks live scores</span></div>
+    <div class="feature-item"><span class="icon">💬</span><span>Handles hints, score queries, off-topic messages — all in character</span></div>
+    <div class="feature-item"><span class="icon">📊</span><span>Live leaderboard visible to organiser during the event</span></div>
+    <div class="feature-item"><span class="icon">🔁</span><span>Reusable for any event: Amazing Race, Chakravyuh, Scavenger Hunt</span></div>
+  </div>
+
+  <div class="footer">Powered by Google Gemini AI + Twilio WhatsApp + Python</div>
+
+</div>
+</body>
+</html>

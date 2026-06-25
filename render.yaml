@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: hunt-master-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: cp config_render.py config.py && gunicorn app:app
+    envVars:
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
