@@ -3,6 +3,7 @@ Core AI logic – uses Google Gemini (free tier) for text replies and photo vali
 """
 
 import base64
+import time
 import ssl
 import certifi
 import requests
@@ -19,7 +20,17 @@ _session.verify = False
 
 
 def _post(url, **kwargs):
-    return _session.post(url, **kwargs)
+    """POST with automatic retry on 429 rate limit."""
+    for attempt in range(3):
+        r = _session.post(url, **kwargs)
+        if r.status_code == 429:
+            wait = 15 * (attempt + 1)   # 15s, 30s, 45s
+            print(f"Gemini 429 rate limit — waiting {wait}s (attempt {attempt+1})")
+            time.sleep(wait)
+            continue
+        return r
+    r.raise_for_status()
+    return r
 from challenges import CHALLENGE_MAP, TOTAL_CHALLENGES
 
 GEMINI_TEXT_URL   = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
