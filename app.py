@@ -35,7 +35,10 @@ def process_photo_async(phone: str, media_url: str):
         reply = game_master.handle_photo(team, media_url)
         send_message(phone, reply)
     except Exception as e:
-        send_message(phone, f"⚠️ Error processing photo. Please try again.")
+        import traceback
+        print(f"PHOTO ERROR for {phone}: {e}")
+        traceback.print_exc()
+        send_message(phone, f"⚠️ Photo error: {str(e)[:100]}")
 
 
 @app.route("/webhook", methods=["POST"])
