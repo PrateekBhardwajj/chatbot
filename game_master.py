@@ -1,40 +1,24 @@
 """
-Core AI logic – uses Google Gemini (free tier) for text replies and photo validation.
+Core AI logic – uses OpenRouter (free) for text replies and photo validation.
 """
 
 import base64
 import time
-import ssl
-import certifi
 import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.ssl_ import create_urllib3_context
-from config import GEMINI_API_KEY
+from config import OPENROUTER_API_KEY
+from challenges import CHALLENGE_MAP, TOTAL_CHALLENGES
 
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-# SSL verification disabled for local Windows testing (works fine on cloud deployment)
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 _session = requests.Session()
 _session.verify = False
 
-
-def _post(url, **kwargs):
-    """POST with automatic retry on 429 rate limit."""
-    for attempt in range(3):
-        r = _session.post(url, **kwargs)
-        if r.status_code == 429:
-            wait = 15 * (attempt + 1)   # 15s, 30s, 45s
-            print(f"Gemini 429 rate limit — waiting {wait}s (attempt {attempt+1})")
-            time.sleep(wait)
-            continue
-        return r
-    r.raise_for_status()
-    return r
-from challenges import CHALLENGE_MAP, TOTAL_CHALLENGES
-
-GEMINI_TEXT_URL   = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
-GEMINI_VISION_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+HEADERS = {
+    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+    "Content-Type": "application/json",
+}
 
 SYSTEM_PROMPT = """
 You are The Hunt Master — the mysterious, dramatic host of the Digital Amazing Race.
@@ -50,55 +34,65 @@ Rules you ALWAYS follow:
 """
 
 
-def _chat(messages: list[dict]) -> str:
-    # Build Gemini contents format
-    contents = []
-    for m in messages:
-        role = "user" if m["role"] == "user" else "model"
-        contents.append({"role": role, "parts": [{"text": m["content"]}]})
-
-    payload = {
-        "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
-        "contents": contents,
-        "generationConfig": {"maxOutputTokens": 300, "temperature": 0.7},
-    }
-    r = _post(GEMINI_TEXT_URL, json=payload, timeout=30)
+def _post(payload):
+    """POST to OpenRouter with retry on 429."""
+    for attempt in range(3):
+        r = _session.post(OPENROUTER_URL, json=payload, headers=HEADERS, timeout=40)
+        if r.status_code == 429:
+            wait = 15 * (attempt + 1)
+            print(f"OpenRouter 429 — waiting {wait}s (attempt {attempt+1})")
+            time.sleep(wait)
+            continue
+        r.raise_for_status()
+        return r
     r.raise_for_status()
-    return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+    return r
+
+
+def _chat(messages: list[dict]) -> str:
+    payload = {
+        "model": "google/gemini-2.0-flash-exp:free",
+        "messages": [{"role": "system", "content": SYSTEM_PROMPT}] + messages,
+        "max_tokens": 300,
+        "temperature": 0.7,
+    }
+    r = _post(payload)
+    return r.json()["choices"][0]["message"]["content"].strip()
 
 
 def _validate_photo_with_vision(image_url: str, question: str) -> bool:
-    """Download image from Twilio, send to Gemini Vision for validation."""
+    """Download image from Twilio, send to vision model for validation."""
     from config import TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN
     img_response = _session.get(image_url, auth=(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN), timeout=20)
     img_b64 = base64.b64encode(img_response.content).decode("utf-8")
-    mime     = img_response.headers.get("Content-Type", "image/jpeg")
+    mime = img_response.headers.get("Content-Type", "image/jpeg")
 
     payload = {
-        "contents": [
+        "model": "google/gemini-2.0-flash-exp:free",
+        "messages": [
             {
-                "parts": [
-                    {"inline_data": {"mime_type": mime, "data": img_b64}},
-                    {"text": question + " Answer YES or NO only."},
-                ]
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{img_b64}"}},
+                    {"type": "text", "text": question + " Answer YES or NO only."},
+                ],
             }
         ],
-        "generationConfig": {"maxOutputTokens": 5, "temperature": 0},
+        "max_tokens": 5,
+        "temperature": 0,
     }
-    r = _post(GEMINI_VISION_URL, json=payload, timeout=30)
-    r.raise_for_status()
-    answer = r.json()["candidates"][0]["content"]["parts"][0]["text"].strip().upper()
+    r = _post(payload)
+    answer = r.json()["choices"][0]["message"]["content"].strip().upper()
     return answer.startswith("YES")
 
 
 # ── Public functions called by app.py ──────────────────────────────────────
 
 def handle_registration(team, text: str) -> str:
-    """First interaction – ask for team name."""
     if not team.registered:
         if team.waiting_for == "team_name":
-            team.name       = text.strip().title()
-            team.registered = True
+            team.name        = text.strip().title()
+            team.registered  = True
             team.waiting_for = None
             challenge = CHALLENGE_MAP[1]
             return (
@@ -113,7 +107,7 @@ def handle_registration(team, text: str) -> str:
                 "State your team name, Agent.\n"
                 "No name, no mission."
             )
-    return None   # already registered, caller handles
+    return None
 
 
 def handle_photo(team, image_url: str) -> str:
@@ -130,7 +124,7 @@ def handle_photo(team, image_url: str) -> str:
     passed = _validate_photo_with_vision(image_url, challenge["validate"])
 
     if passed:
-        team.score       += challenge["points"]
+        team.score        += challenge["points"]
         team.completed.append(challenge["id"])
         team.current_clue += 1
 
@@ -159,7 +153,6 @@ def handle_photo(team, image_url: str) -> str:
 def handle_text(team, text: str) -> str:
     text_lower = text.lower().strip()
 
-    # Special commands
     if any(w in text_lower for w in ["hint", "help", "stuck", "clue"]):
         challenge = CHALLENGE_MAP.get(team.current_clue)
         if challenge:
@@ -175,8 +168,7 @@ def handle_text(team, text: str) -> str:
             return f"📋 *CURRENT MISSION:*\n\n{challenge['clue']}"
         return "All missions complete."
 
-    # General AI reply in character
     team.message_history.append({"role": "user", "content": text})
-    reply = _chat(team.message_history[-6:])   # last 6 messages for context
+    reply = _chat(team.message_history[-6:])
     team.message_history.append({"role": "assistant", "content": reply})
     return reply
