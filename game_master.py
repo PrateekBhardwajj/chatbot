@@ -38,6 +38,7 @@ def _post(payload):
     """POST to OpenRouter with retry on 429."""
     for attempt in range(3):
         r = _session.post(OPENROUTER_URL, json=payload, headers=HEADERS, timeout=40)
+        print(f"OpenRouter status: {r.status_code} | body: {r.text[:300]}")
         if r.status_code == 429:
             wait = 15 * (attempt + 1)
             print(f"OpenRouter 429 — waiting {wait}s (attempt {attempt+1})")
@@ -68,7 +69,7 @@ def _validate_photo_with_vision(image_url: str, question: str) -> bool:
     mime = img_response.headers.get("Content-Type", "image/jpeg")
 
     payload = {
-        "model": "meta-llama/llama-4-maverick:free",
+        "model": "google/gemma-3-27b-it:free",
         "messages": [
             {
                 "role": "user",
