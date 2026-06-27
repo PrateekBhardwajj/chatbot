@@ -51,7 +51,7 @@ def _post(payload):
 
 def _chat(messages: list[dict]) -> str:
     payload = {
-        "model": "google/gemini-2.0-flash-exp:free",
+        "model": "meta-llama/llama-3.3-70b-instruct:free",
         "messages": [{"role": "system", "content": SYSTEM_PROMPT}] + messages,
         "max_tokens": 300,
         "temperature": 0.7,
@@ -68,7 +68,7 @@ def _validate_photo_with_vision(image_url: str, question: str) -> bool:
     mime = img_response.headers.get("Content-Type", "image/jpeg")
 
     payload = {
-        "model": "google/gemini-2.0-flash-exp:free",
+        "model": "meta-llama/llama-4-maverick:free",
         "messages": [
             {
                 "role": "user",
